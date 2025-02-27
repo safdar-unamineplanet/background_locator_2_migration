@@ -16,7 +16,7 @@ This is a fork of the original background_locator_2 plugin with the following im
 - Updated Gradle and Kotlin dependencies
 - Added proper namespace to Android build.gradle
 
-### Usage with this fork
+## Usage with this fork
 
 To use this fork in your Flutter project, add the following to your `pubspec.yaml`:
 
@@ -26,6 +26,7 @@ dependencies:
     git:
       url: https://github.com/sultan18kh/background_locator_2_gradle_migration.git
       ref: fix/gradle-compatibility
+```
 
 ![demo](https://raw.githubusercontent.com/RomanJos/background_locator/master/demo.gif)
 
@@ -48,3 +49,4 @@ Thanks to all who contributed on this plugin to fix bugs and adding new feature,
 * [Gerardo Ibarra](https://github.com/gpibarra)
 * [RomanJos](https://github.com/RomanJos)
 * [Marcelo Henrique Neppel](https://github.com/marceloneppel)
+* [Sultan Khan](https://github.com/sultan18kh) (creator of fork)
