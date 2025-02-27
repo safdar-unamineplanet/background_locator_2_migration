@@ -1,3 +1,10 @@
+* Fixed compatibility with Android Gradle Plugin 8.0+
+* Added namespace to Android build.gradle
+* Fixed JVM target compatibility between Java and Kotlin
+* Updated Gradle and Kotlin dependencies for better compatibility
+* Updated to target Android SDK 33
+* Removed namespace declaration from Android Manifest
+
 ## 2.0.6
 * Fixing iOS build
 * Fixing memory leak on Android

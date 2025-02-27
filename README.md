@@ -7,6 +7,26 @@ This package is a V2 of the background_locator package, fixing it and making it 
 
 A Flutter plugin for getting location updates even when the app is killed.
 
+## Fork Information
+
+This is a fork of the original background_locator_2 plugin with the following improvements:
+
+- Added compatibility with Android Gradle Plugin 8.0+
+- Fixed JVM target compatibility issues
+- Updated Gradle and Kotlin dependencies
+- Added proper namespace to Android build.gradle
+
+### Usage with this fork
+
+To use this fork in your Flutter project, add the following to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  background_locator_2:
+    git:
+      url: https://github.com/sultan18kh/background_locator_2_gradle_migration.git
+      ref: fix/gradle-compatibility
+
 ![demo](https://raw.githubusercontent.com/RomanJos/background_locator/master/demo.gif)
 
 Refer to [wiki](https://github.com/Yukams/background_locator_fixed/wiki) page for install and setup instruction or jump to specific subject with below links:
