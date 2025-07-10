@@ -9,51 +9,54 @@ import java.util.HashMap
 class LocationParserUtil {
     companion object {
         fun getLocationMapFromLocation(location: Location): HashMap<Any, Any> {
-            var speedAccuracy = 0f
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                speedAccuracy = location.speedAccuracyMetersPerSecond
-            }
-            var isMocked = false
+            val map = hashMapOf<Any, Any>()
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                isMocked = location.isFromMockProvider
+                map[Keys.ARG_IS_MOCKED] = location.isFromMockProvider
             }
 
-            return hashMapOf(
-                    Keys.ARG_IS_MOCKED to isMocked,
-                    Keys.ARG_LATITUDE to location.latitude,
-                    Keys.ARG_LONGITUDE to location.longitude,
-                    Keys.ARG_ACCURACY to location.accuracy,
-                    Keys.ARG_ALTITUDE to location.altitude,
-                    Keys.ARG_SPEED to location.speed,
-                    Keys.ARG_SPEED_ACCURACY to speedAccuracy,
-                    Keys.ARG_HEADING to location.bearing,
-                    Keys.ARG_TIME to location.time.toDouble(),
-                    Keys.ARG_PROVIDER to location.provider,
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                map[Keys.ARG_SPEED_ACCURACY] = location.speedAccuracyMetersPerSecond
+            } else {
+                map[Keys.ARG_SPEED_ACCURACY] = 0f
+            }
+
+            map[Keys.ARG_LATITUDE] = location.latitude
+            map[Keys.ARG_LONGITUDE] = location.longitude
+            map[Keys.ARG_ACCURACY] = location.accuracy
+            map[Keys.ARG_ALTITUDE] = location.altitude
+            map[Keys.ARG_SPEED] = location.speed
+            map[Keys.ARG_HEADING] = location.bearing
+            map[Keys.ARG_TIME] = location.time.toDouble()
+            map[Keys.ARG_PROVIDER] = location.provider ?: ""
+
+            return map
         }
 
         fun getLocationMapFromLocation(location: LocationResult?): HashMap<Any, Any>? {
             val firstLocation = location?.lastLocation ?: return null
+            val map = hashMapOf<Any, Any>()
 
-            var speedAccuracy = 0f
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                speedAccuracy = firstLocation.speedAccuracyMetersPerSecond
-            }
-            var isMocked = false
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                isMocked = firstLocation.isFromMockProvider
+                map[Keys.ARG_IS_MOCKED] = firstLocation.isFromMockProvider
             }
 
-            return hashMapOf(
-                    Keys.ARG_IS_MOCKED to isMocked,
-                    Keys.ARG_LATITUDE to firstLocation.latitude,
-                    Keys.ARG_LONGITUDE to firstLocation.longitude,
-                    Keys.ARG_ACCURACY to firstLocation.accuracy,
-                    Keys.ARG_ALTITUDE to firstLocation.altitude,
-                    Keys.ARG_SPEED to firstLocation.speed,
-                    Keys.ARG_SPEED_ACCURACY to speedAccuracy,
-                    Keys.ARG_HEADING to firstLocation.bearing,
-                    Keys.ARG_TIME to firstLocation.time.toDouble())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                map[Keys.ARG_SPEED_ACCURACY] = firstLocation.speedAccuracyMetersPerSecond
+            } else {
+                map[Keys.ARG_SPEED_ACCURACY] = 0f
+            }
+
+            map[Keys.ARG_LATITUDE] = firstLocation.latitude
+            map[Keys.ARG_LONGITUDE] = firstLocation.longitude
+            map[Keys.ARG_ACCURACY] = firstLocation.accuracy
+            map[Keys.ARG_ALTITUDE] = firstLocation.altitude
+            map[Keys.ARG_SPEED] = firstLocation.speed
+            map[Keys.ARG_HEADING] = firstLocation.bearing
+            map[Keys.ARG_TIME] = firstLocation.time.toDouble()
+            map[Keys.ARG_PROVIDER] = firstLocation.provider ?: ""
+
+            return map
         }
     }
 }

@@ -28,7 +28,7 @@ apply plugin: 'kotlin-android'
 android {
     namespace 'yukams.app.background_locator_2'
 
-    compileSdkVersion 29
+    compileSdkVersion 35
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -51,6 +51,7 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "com.google.android.gms:play-services-location:21.0.1"
     implementation 'com.google.code.gson:gson:2.8.6'
