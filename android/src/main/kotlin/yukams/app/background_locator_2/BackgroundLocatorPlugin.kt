@@ -89,6 +89,16 @@ class BackgroundLocatorPlugin
                 return
             }
 
+            // Check FOREGROUND_SERVICE_LOCATION permission for Android 14+ (API 34+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                    context.checkSelfPermission(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+                    == PackageManager.PERMISSION_DENIED) {
+
+                val msg = "'registerLocator' requires the FOREGROUND_SERVICE_LOCATION permission for Android 14+."
+                result?.error(msg, null, null)
+                return
+            }
+
             startIsolateService(context, settings)
 
             // We need to know when the service binded exactly, there is some delay between starting a
@@ -209,7 +219,10 @@ class BackgroundLocatorPlugin
             val settings = args[Keys.ARG_SETTINGS] as Map<*, *>
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED
+                == PackageManager.PERMISSION_GRANTED &&
+                (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
+                context.checkSelfPermission(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED)
             ) {
                 startIsolateService(context, settings)
             }

@@ -18,14 +18,21 @@ import java.lang.RuntimeException
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal fun IsolateHolderService.startLocatorService(context: Context) {
+    Log.e("IsolateHolderService", "startLocatorService called")
 
     val serviceStarted = AtomicBoolean(IsolateHolderService.isServiceRunning)
     // start synchronized block to prevent multiple service instant
     synchronized(serviceStarted) {
         this.context = context
         // resetting the background engine to avoid being stuck after an app crash
-        IsolateHolderService.backgroundEngine?.destroy();
-        IsolateHolderService.backgroundEngine = null
+        try {
+            IsolateHolderService.backgroundEngine?.destroy();
+            IsolateHolderService.backgroundEngine = null
+            Log.e("IsolateHolderService", "Background engine destroyed")
+        } catch (e: Exception) {
+            Log.e("IsolateHolderService", "Error destroying background engine: ${e.message}")
+        }
+        
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -57,28 +64,41 @@ internal fun IsolateHolderService.startLocatorService(context: Context) {
                 IsolateHolderService.backgroundEngine?.dartExecutor?.executeDartCallback(args)
                 isServiceInitialized = true
                 Log.e("IsolateHolderExtension", "service initialized")
+            } else {
+                Log.e("IsolateHolderService", "Location permission not granted or Android version too low")
             }
         } catch (e: UnsatisfiedLinkError) {
+            Log.e("IsolateHolderService", "UnsatisfiedLinkError in startLocatorService: ${e.message}")
+            e.printStackTrace()
+        } catch (e: Exception) {
+            Log.e("IsolateHolderService", "Error in startLocatorService: ${e.message}")
             e.printStackTrace()
         }
     }
 
-    IsolateHolderService.getBinaryMessenger(context)?.let { binaryMessenger ->
-        backgroundChannel =
-            MethodChannel(
-                binaryMessenger,
-                Keys.BACKGROUND_CHANNEL_ID
-            )
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-                backgroundChannel.setMethodCallHandler(this)
+    try {
+        IsolateHolderService.getBinaryMessenger(context)?.let { binaryMessenger ->
+            backgroundChannel =
+                MethodChannel(
+                    binaryMessenger,
+                    Keys.BACKGROUND_CHANNEL_ID
+                )
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                    context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED
+                ) {
+                    backgroundChannel.setMethodCallHandler(this)
+                    Log.e("IsolateHolderService", "Method channel handler set successfully")
+                }
+            } catch (e: RuntimeException) {
+                Log.e("IsolateHolderService", "Error setting method channel handler: ${e.message}")
+                e.printStackTrace()
             }
-        } catch (e: RuntimeException) {
-            e.printStackTrace()
         }
+    } catch (e: Exception) {
+        Log.e("IsolateHolderService", "Error setting up method channel: ${e.message}")
+        e.printStackTrace()
     }
 }
 
