@@ -80,24 +80,48 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
 
     override fun onCreate() {
         super.onCreate()
-        startLocatorService(this)
-        startForeground(notificationId, getNotification())
+        Log.e("IsolateHolderService", "onCreate called")
+        
+        // Start foreground immediately to avoid ForegroundServiceDidNotStartInTimeException
+        try {
+            startForeground(notificationId, getNotification())
+            Log.e("IsolateHolderService", "startForeground called successfully in onCreate")
+        } catch (e: Exception) {
+            Log.e("IsolateHolderService", "Error starting foreground in onCreate: ${e.message}")
+        }
+        
+        // Initialize the service in background
+        try {
+            startLocatorService(this)
+        } catch (e: Exception) {
+            Log.e("IsolateHolderService", "Error in startLocatorService: ${e.message}")
+            // Don't stop the service if initialization fails, just log the error
+        }
     }
 
     private fun start() {
-        (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
-            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
-                setReferenceCounted(false)
-                acquire(wakeLockTime)
+        Log.e("IsolateHolderService", "start() called")
+        
+        try {
+            (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
+                newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
+                    setReferenceCounted(false)
+                    acquire(wakeLockTime)
+                }
             }
-        }
 
-        // Starting Service as foreground with a notification prevent service from closing
-        val notification = getNotification()
-        startForeground(notificationId, notification)
+            // Update notification if needed, but don't call startForeground again
+            val notification = getNotification()
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(notificationId, notification)
 
-        pluggables.forEach {
-            context?.let { it1 -> it.onServiceStart(it1) }
+            pluggables.forEach {
+                context?.let { it1 -> it.onServiceStart(it1) }
+            }
+            
+            Log.e("IsolateHolderService", "start() completed successfully")
+        } catch (e: Exception) {
+            Log.e("IsolateHolderService", "Error in start(): ${e.message}")
         }
     }
 
@@ -139,75 +163,110 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.e("IsolateHolderService", "onStartCommand => intent.action : ${intent?.action}")
-        if(intent == null) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.e("IsolateHolderService", "app has crashed, stopping it")
-                stopSelf()
+        
+        try {
+            if(intent == null) {
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                    || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    Log.e("IsolateHolderService", "Location permissions not granted, stopping service")
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                else {
+                    Log.e("IsolateHolderService", "Intent is null but permissions are granted, continuing")
+                    return START_STICKY
+                }
             }
-            else {
-                return super.onStartCommand(intent, flags, startId)
-            }
-        }
 
-        when {
-            ACTION_SHUTDOWN == intent?.action -> {
-                isServiceRunning = false
-                shutdownHolderService()
-            }
-            ACTION_START == intent?.action -> {
-                if (isServiceRunning) {
+            when {
+                ACTION_SHUTDOWN == intent?.action -> {
+                    Log.e("IsolateHolderService", "Received SHUTDOWN action")
                     isServiceRunning = false
                     shutdownHolderService()
                 }
+                ACTION_START == intent?.action -> {
+                    Log.e("IsolateHolderService", "Received START action")
+                    if (isServiceRunning) {
+                        Log.e("IsolateHolderService", "Service already running, shutting down first")
+                        isServiceRunning = false
+                        shutdownHolderService()
+                    }
 
-                if (!isServiceRunning) {
-                    isServiceRunning = true
-                    startHolderService(intent)
+                    if (!isServiceRunning) {
+                        Log.e("IsolateHolderService", "Starting service")
+                        isServiceRunning = true
+                        startHolderService(intent)
+                    }
+                }
+                ACTION_UPDATE_NOTIFICATION == intent?.action -> {
+                    Log.e("IsolateHolderService", "Received UPDATE_NOTIFICATION action")
+                    if (isServiceRunning) {
+                        updateNotification(intent)
+                    }
+                }
+                else -> {
+                    Log.e("IsolateHolderService", "Unknown action: ${intent?.action}")
                 }
             }
-            ACTION_UPDATE_NOTIFICATION == intent?.action -> {
-                if (isServiceRunning) {
-                    updateNotification(intent)
-                }
-            }
+
+            return START_STICKY
+        } catch (e: Exception) {
+            Log.e("IsolateHolderService", "Error in onStartCommand: ${e.message}")
+            e.printStackTrace()
+            return START_STICKY
         }
-
-        return START_STICKY
     }
 
     private fun startHolderService(intent: Intent) {
         Log.e("IsolateHolderService", "startHolderService")
-        notificationChannelName =
-            intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_CHANNEL_NAME).toString()
-        notificationTitle =
-            intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_TITLE).toString()
-        notificationMsg = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_MSG).toString()
-        notificationBigMsg =
-            intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_BIG_MSG).toString()
-        val iconNameDefault = "ic_launcher"
-        var iconName = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_ICON)
-        if (iconName == null || iconName.isEmpty()) {
-            iconName = iconNameDefault
+        
+        try {
+            notificationChannelName =
+                intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_CHANNEL_NAME) ?: "Flutter Locator Plugin"
+            notificationTitle =
+                intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_TITLE) ?: "Start Location Tracking"
+            notificationMsg = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_MSG) ?: "Track location in background"
+            notificationBigMsg =
+                intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_BIG_MSG) ?: "Background location is on to keep the app up-to-date with your location. This is required for main features to work properly when the app is not running."
+            
+            val iconNameDefault = "ic_launcher"
+            var iconName = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_ICON)
+            if (iconName == null || iconName.isEmpty()) {
+                iconName = iconNameDefault
+            }
+            icon = resources.getIdentifier(iconName, "mipmap", packageName)
+            if (icon == 0) {
+                icon = resources.getIdentifier(iconNameDefault, "mipmap", packageName)
+            }
+            notificationIconColor =
+                intent.getLongExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_ICON_COLOR, 0).toInt()
+            wakeLockTime = intent.getIntExtra(Keys.SETTINGS_ANDROID_WAKE_LOCK_TIME, 60) * 60 * 1000L
+
+            // Initialize location client
+            try {
+                locatorClient = context?.let { getLocationClient(it) }
+                locatorClient?.requestLocationUpdates(getLocationRequest(intent))
+                Log.e("IsolateHolderService", "Location client initialized successfully")
+            } catch (e: Exception) {
+                Log.e("IsolateHolderService", "Error initializing location client: ${e.message}")
+            }
+
+            // Fill pluggable list
+            if (intent.hasExtra(Keys.SETTINGS_INIT_PLUGGABLE)) {
+                pluggables.add(InitPluggable())
+            }
+
+            if (intent.hasExtra(Keys.SETTINGS_DISPOSABLE_PLUGGABLE)) {
+                pluggables.add(DisposePluggable())
+            }
+
+            start()
+            Log.e("IsolateHolderService", "startHolderService completed successfully")
+        } catch (e: Exception) {
+            Log.e("IsolateHolderService", "Error in startHolderService: ${e.message}")
+            e.printStackTrace()
+            // Don't stop the service, just log the error
         }
-        icon = resources.getIdentifier(iconName, "mipmap", packageName)
-        notificationIconColor =
-            intent.getLongExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_ICON_COLOR, 0).toInt()
-        wakeLockTime = intent.getIntExtra(Keys.SETTINGS_ANDROID_WAKE_LOCK_TIME, 60) * 60 * 1000L
-
-        locatorClient = context?.let { getLocationClient(it) }
-        locatorClient?.requestLocationUpdates(getLocationRequest(intent))
-
-        // Fill pluggable list
-        if (intent.hasExtra(Keys.SETTINGS_INIT_PLUGGABLE)) {
-            pluggables.add(InitPluggable())
-        }
-
-        if (intent.hasExtra(Keys.SETTINGS_DISPOSABLE_PLUGGABLE)) {
-            pluggables.add(DisposePluggable())
-        }
-
-        start()
     }
 
     private fun shutdownHolderService() {
